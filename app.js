@@ -16,6 +16,11 @@ var linkKolejki = tablicaKolejki.QueueUrl
 //obiekt kolejki z aws-sdk
 var sqs=new AWS.SQS();
 
+
+//obiekt do obsługi simple DB z aws-sdk
+var simpledb = new AWS.SimpleDB();
+
+
 //funkcja - petla wykonuje sie caly czas
 var myServer = function(){
 	
@@ -64,30 +69,78 @@ var myServer = function(){
 						var loopCount = 1;
 						var doc = tekenFile.Body;
 						helpers.calculateMultiDigest(doc, algorithms, 
-						function(err, digests) {
+							function(err, digests) {
 										
 	//WCIECIE JEST BO MNIE ODLEGLOSC TABULACJI DENERWOWALA
 	//A NIE CHCE MI SIE PRZERABIAC NA ODREBNE FUNKCJE :-)
 	console.log(digests);
 	
-	//zapis do pliku skrótów, później będzie do simpleDB
-	fs.writeFile("/home/bitnami/awslab4/actions/files/dane.s", digests, 
-	function(err) {
-		if(err) {
-			return console.log(err);
+	
+	
+	
+	var paramsdb = {
+		Attributes: [
+			{ Name: messageinfo.key, Value: JSON.stringify(digests), Replace: true}
+		],
+		DomainName: "czubakd1", 
+		ItemName: 'ITEM001'
+	};
+	simpledb.putAttributes(paramsdb, function(err, datass) {
+		if (err) {
+			console.log('Blad zapisu do bazy'+err, err.stack);
 		}
-		console.log("Zapisano do pliku");
+		else {
+			console.log("Zapisano do bazy");
+			//usuwanie wiadomosci z kolejki
+			var params = {
+			  QueueUrl: linkKolejki,
+			  ReceiptHandle: ReceiptHandle_forDelete
+			};
+			sqs.deleteMessage(params, function(err, data) {
+			  if (err) console.log(err, err.stack); // an error occurred
+			  else     console.log("Usunieto wiadomosc z kolejki: "+data);           // successful response
+			});
+		}
+	});
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
-		//usuwanie wiadomosci z kolejki
-		var params = {
-		  QueueUrl: linkKolejki,
-		  ReceiptHandle: ReceiptHandle_forDelete
-		};
-		sqs.deleteMessage(params, function(err, data) {
-		  if (err) console.log(err, err.stack); // an error occurred
-		  else     console.log("Usunieto wiadomosc z kolejki: "+data);           // successful response
-		});
-	}); 
+	
+	
+	
+	
+	
+	
+	
+	
+	//zapis do pliku skrótów, później będzie do simpleDB
+	/*fs.writeFile("/home/bitnami/awslab4/actions/files/dane.s", digests, 
+		function(err) {
+			if(err) {
+				return console.log(err);
+			}
+			console.log("Zapisano do pliku");
+
+			//usuwanie wiadomosci z kolejki
+			var params = {
+			  QueueUrl: linkKolejki,
+			  ReceiptHandle: ReceiptHandle_forDelete
+			};
+			sqs.deleteMessage(params, function(err, data) {
+			  if (err) console.log(err, err.stack); // an error occurred
+			  else     console.log("Usunieto wiadomosc z kolejki: "+data);           // successful response
+			});
+	}); */
 							
 						}, loopCount);
 					}
